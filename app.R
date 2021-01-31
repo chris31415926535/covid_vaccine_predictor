@@ -67,6 +67,7 @@ if (update) {
     
     # save to file
     all_stats %>%
+        mutate(province = toupper(province)) %>%
         write_csv(file = "data/all.csv")
     
     # update the timestamp
@@ -76,7 +77,8 @@ if (update) {
 }
 
 ## here is where we load the data if we didn't need to update it
-all_stats <- read_csv("data/all.csv")
+all_stats <- read_csv("data/all.csv") %>%
+    mutate(date = lubridate::ymd(date))
 provinces <- read_csv("data/province_info.csv")
 
 # base_url <- "https://api.covid19tracker.ca/reports?stat=vaccinations"
@@ -88,79 +90,133 @@ provinces <- read_csv("data/province_info.csv")
 #     stop("API did not return json.", .call = FALSE)
 # }
 
-jurisdiction_human <- "Canada"
+# can we make a tibble with the supplementary information?
+#supp_data 
 
-vaccinations <- jsonlite::fromJSON(content(resp, "text")) %>% 
-    enframe() %>% 
-    pivot_wider(names_from = name, values_from = value) %>% 
-    unnest(cols = c(province, data)) %>%
-    mutate(date = lubridate::ymd(date))
-
-date_first_vaccine <- vaccinations %>%
-    filter(total_vaccinations > 0) %>%
-    arrange(date) %>%
-    slice_head(n=1) %>%
-    pull(date)
-
-date_last_vaccine <- vaccinations %>%
-    arrange(date) %>%
-    slice_tail(n=1) %>%
-    pull(date)
-
-vaccines_so_far <- vaccinations %>%
-    pull(total_vaccinations) %>%
-    max()
-
-avg_vaccines_per_minute <- vaccines_so_far / as.numeric(difftime(date_last_vaccine, date_first_vaccine, unit = "mins"))
-
-pop <- 37900000
-
-vaccines_reqd <- pop * 2
-
-mins_to_full_vaccination <- floor(vaccines_reqd / avg_vaccines_per_minute)
-
-date_of_full_vaccination <- Sys.Date() + lubridate::minutes(mins_to_full_vaccination)
-
-predicted_line <- tribble(~date, ~total_vaccinations,
-                          date_first_vaccine, 0,
-                          date_of_full_vaccination, vaccines_reqd) %>%
-    mutate(date = as_date(date))
+supp_stats <- tibble(    code = all_stats %>%
+               group_by(province) %>%
+               select(province) %>%
+               arrange(province) %>%
+               distinct() %>%
+               pull(province),
+           
+    date_first_vaccine = all_stats %>%
+               group_by(province) %>%
+               filter(total_vaccinations > 0) %>%
+               arrange(province, date) %>%
+               slice_head(n=1) %>%
+               pull(date),
+           
+           date_last_vaccine = all_stats %>%
+               group_by(province) %>%
+               arrange(province, date) %>%
+               slice_tail(n=1) %>%
+               pull(date),
+           
+           vaccines_so_far = all_stats %>%
+               group_by(province) %>%
+        arrange(province) %>%
+               select(total_vaccinations) %>%
+               summarise(total_vaccinations = max(total_vaccinations, na.rm = TRUE)) %>%
+                pull(total_vaccinations)
+) %>%
+    left_join(provinces) %>%
+    mutate (avg_vaccines_per_minute = vaccines_so_far / as.numeric(difftime(date_last_vaccine, date_first_vaccine, unit = "mins")),
+            vaccines_reqd = population * 2,
+            mins_to_full_vaccination = floor(vaccines_reqd / avg_vaccines_per_minute),
+            
+            date_of_full_vaccination = Sys.Date() + lubridate::minutes(mins_to_full_vaccination))
+           
 
 # define lubridate date-time-stamp
 sf <- stamp("Sunday, January 17, 1999, at 3:34PM")
+# 
+# all_stats %>%
+#     group_by(province) %>%
+#     summarise(date_first_vaccine = all_stats %>%
+#                   group_by(province) %>%
+#                   filter(total_vaccinations > 0) %>%
+#                   arrange(date) %>%
+#                   slice_head(n=1) %>%
+#                   pull(date),
+#               
+#               date_last_vaccine = all_stats %>%
+#                   arrange(date) %>%
+#                   slice_tail(n=1) %>%
+#                   pull(date),
+#               
+#               vaccines_so_far = all_stats %>%
+#                   pull(total_vaccinations) %>%
+#                   max(na.rm = TRUE)
+#     )
+# 
+# jurisdiction_human <- "Canada"
+# 
+# vaccinations <- all_stats %>%
+#     filter(province == "ALL")
+# 
+# date_first_vaccine <- vaccinations %>%
+#     filter(total_vaccinations > 0) %>%
+#     arrange(date) %>%
+#     slice_head(n=1) %>%
+#     pull(date)
+# 
+# date_last_vaccine <- vaccinations %>%
+#     arrange(date) %>%
+#     slice_tail(n=1) %>%
+#     pull(date)
+# 
+# vaccines_so_far <- vaccinations %>%
+#     pull(total_vaccinations) %>%
+#     max()
+# 
+# avg_vaccines_per_minute <- vaccines_so_far / as.numeric(difftime(date_last_vaccine, date_first_vaccine, unit = "mins"))
+# 
+# pop <- 37900000
+# 
+# vaccines_reqd <- pop * 2
+# 
+# mins_to_full_vaccination <- floor(vaccines_reqd / avg_vaccines_per_minute)
+# 
+# date_of_full_vaccination <- Sys.Date() + lubridate::minutes(mins_to_full_vaccination)
+# 
+# predicted_line <- tribble(~date, ~total_vaccinations,
+#                           date_first_vaccine, 0,
+#                           date_of_full_vaccination, vaccines_reqd) %>%
+#     mutate(date = as_date(date))
+# 
+# 
+# 
+# date_string <- sf(date_of_full_vaccination)
+# 
+# 
+# vac_plot <- vaccinations %>%
+#     filter(total_vaccinations > 0) %>%
+#     ggplot(aes(x = date, y = total_vaccinations)) +
+#     geom_line(aes(colour = "Vaccines Administered",
+#                   linetype = "Vaccines Administered")) +
+#     geom_point(aes(colour = "Vaccines Administered",
+#                    linetype = "Vaccines Administered")) +
+#     geom_hline(aes(yintercept = vaccines_reqd, 
+#                    colour = "Total Vaccines Required",
+#                    linetype = "Total Vaccines Required")) +
+#     geom_line(data = predicted_line,
+#               aes(linetype = "Predicted Vaccinations",
+#                   colour = "Predicted Vaccinations")) +
+#     scale_y_continuous(label = scales::comma_format()) +
+#     theme_minimal() +
+#     labs(x = "Date",
+#          y = "Vaccines Administered",
+#          title = paste0(jurisdiction_human," will be fully vaccinated on ", date_string, "!")) +
+#     scale_linetype_manual("Vaccines Administered", values = c("dotted", "twodash", "solid")) +
+#     scale_colour_brewer(palette = "Dark2" )
+# 
+# vac_plot %>%
+#     plotly::ggplotly(dynamicTicks = TRUE)
 
-date_string <- sf(date_of_full_vaccination)
 
-
-vac_plot <- vaccinations %>%
-    filter(total_vaccinations > 0) %>%
-    ggplot(aes(x = date, y = total_vaccinations)) +
-    geom_line(aes(colour = "Vaccines Administered",
-                  linetype = "Vaccines Administered")) +
-    geom_point(aes(colour = "Vaccines Administered",
-                   linetype = "Vaccines Administered")) +
-    geom_hline(aes(yintercept = vaccines_reqd, 
-                   colour = "Total Vaccines Required",
-                   linetype = "Total Vaccines Required")) +
-    geom_line(data = predicted_line,
-              aes(linetype = "Predicted Vaccinations",
-                  colour = "Predicted Vaccinations")) +
-    scale_y_continuous(label = scales::comma_format()) +
-    theme_minimal() +
-    labs(x = "Date",
-         y = "Vaccines Administered",
-         title = paste0(jurisdiction_human," will be fully vaccinated on ", date_string, "!")) +
-    scale_linetype_manual("Vaccines Administered", values = c("dotted", "twodash", "solid")) +
-    scale_colour_brewer(palette = "Dark2" )
-
-vac_plot %>%
-    plotly::ggplotly(dynamicTicks = TRUE)
-
-
-jurisdiction_options <- c(
-    "Canada" = "all",
-    
-)
+prov_options <- c(provinces$code)
+names(prov_options) <- provinces$name
 
 
 # Define UI for application that draws a histogram
@@ -173,8 +229,8 @@ ui <- dashboardPage(
         
         shiny::selectInput("jurisdiction_select",
                            label = "Choose a Jurisdiction:",
-                           choices = c(1,2),
-                           selected = 1)
+                           choices = prov_options,
+                           selected = "ALL")
     ),
     
     dashboardBody(
@@ -185,16 +241,18 @@ ui <- dashboardPage(
             
             column(width = 12,
                    box(width = 12,
-                       h1(paste0(jurisdiction_human," will be fully vaccinated against COVID-19 on ", date_string, "!")),
+                       h1(textOutput("title_text")),
                        align = "center")
             ),
             
             box(width = 12,
-                # got full-height leaflet map from here:
-                # https://stackoverflow.com/questions/31278938/how-can-i-make-my-shiny-leafletoutput-have-height-100-while-inside-a-navbarpa
                 plotlyOutput("vaccine_plot")
-                #  leafletOutput("mymap")
-            )
+            ),
+            
+            box(width = 12,
+                
+                )
+            
         )
     )
 )
@@ -206,14 +264,65 @@ server <- function(input, output) {
     
     output$vaccine_plot <- renderPlotly({
         
-        vac_plot <- vaccinations %>%
+        
+        vaccinations <- filteredData()
+        statistics <- filteredStats()
+        print(vaccinations)
+        print(statistics)
+        # 
+        # date_first_vaccine <- vaccinations %>%
+        #     filter(total_vaccinations > 0) %>%
+        #     arrange(date) %>%
+        #     slice_head(n=1) %>%
+        #     pull(date)
+        # 
+        # message(paste0("date_first_vacc ", date_first_vaccine))
+        # 
+        # date_last_vaccine <- vaccinations %>%
+        #     arrange(date) %>%
+        #     slice_tail(n=1) %>%
+        #     pull(date)
+        # message(paste0("date last vacc ", date_last_vaccine))
+        # 
+        # vaccines_so_far <- max(vaccinations$total_vaccinations, na.rm = TRUE)
+        # message(paste0("vaccines so far ",vaccines_so_far))
+        # 
+        # 
+        # avg_vaccines_per_minute <- vaccines_so_far / as.numeric(difftime(date_last_vaccine, date_first_vaccine, unit = "mins"))
+        # 
+        # pop <- 37000000
+        # 
+        # prov_code <- filteredData() %>% 
+        #             pull(province) %>%
+        #             head(1)
+        # 
+        # #provinces[code == filteredData()$province[[1]]]$population
+        # pop <- provinces[provinces$code == prov_code,]$population
+        # message(paste("Pop: ", pop))
+        # 
+        # vaccines_reqd <- pop * 2
+        # 
+        # mins_to_full_vaccination <- floor(vaccines_reqd / avg_vaccines_per_minute)
+        # message(paste0("mins to full: ", mins_to_full_vaccination))
+        # 
+        # date_of_full_vaccination <- Sys.Date() + lubridate::minutes(statistics()$mins_to_full_vaccination)
+        # message(paste0("date of full ",statistics()$date_of_full_vaccination))
+        
+        predicted_line <- tribble(~date, ~total_vaccinations,
+                                  statistics$date_first_vaccine, 0,
+                                  statistics$date_of_full_vaccination, statistics$vaccines_reqd) %>%
+            mutate(date = as_date(date))
+        
+        message(predicted_line)
+        
+        vac_plot <- filteredData() %>% #vaccinations %>%
             filter(total_vaccinations > 0) %>%
             ggplot(aes(x = date, y = total_vaccinations)) +
             geom_line(aes(colour = "Vaccines Administered",
                           linetype = "Vaccines Administered")) +
             geom_point(aes(colour = "Vaccines Administered",
                            linetype = "Vaccines Administered")) +
-            geom_hline(aes(yintercept = vaccines_reqd, 
+            geom_hline(aes(yintercept = statistics$vaccines_reqd, 
                            colour = "Total Vaccines Required",
                            linetype = "Total Vaccines Required")) +
             geom_line(data = predicted_line,
@@ -234,6 +343,34 @@ server <- function(input, output) {
         vac_plot %>%
             plotly::ggplotly(dynamicTicks = TRUE)
         
+    })
+    
+    # Reactive expression for the data subsetted to what the user selected
+    filteredData <- reactive({
+        all_stats %>%
+            filter(province == input$jurisdiction_select)
+        
+    })
+    
+    filteredStats <- reactive({
+        supp_stats %>%
+            filter(code == input$jurisdiction_select)
+    })
+    
+    title_text <- reactive({
+        # jur_name <- provinces %>%
+        #     filter(code == input$jurisdiction_select) %>%
+        #     pull(name)
+        # 
+        date_string <- sf(filteredStats()$date_of_full_vaccination)
+        text <- paste0(filteredStats()$name," will be fully vaccinated against COVID-19 on ", date_string, "!")
+        message(text)
+        
+    })
+    
+    output$title_text <- renderText({
+        date_string <- sf(filteredStats()$date_of_full_vaccination)
+        paste0(filteredStats()$name," will be fully vaccinated against COVID-19 on ", date_string, "!")
     })
 }
 
