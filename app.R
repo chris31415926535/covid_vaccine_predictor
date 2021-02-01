@@ -253,7 +253,8 @@ ui <- dashboardPage(
             
             box(width = 12,
                 title = "Actual and Predicted Vaccinations",
-                plotlyOutput("vaccine_plot")
+                tags$div(class = "plot_box",
+                         plotlyOutput("vaccine_plot"))
             ),
             
             box(width = 12,
@@ -280,7 +281,11 @@ ui <- dashboardPage(
                 p("Created by", tags$a(href = "http://cbelanger.netlify.app", "Christopher Belanger, PhD"), "."),
                 p(tags$a(href = "http://cbelanger.netlify.app", "Read the blog post here"), ", and ", tags$a(href = "https://github.com/chris31415926535/covid_vaccine_predictor", "see the code on GitHub here"), "."),
                 p("All data courtesy of the most-excellent ", tags$a(href = "https://covid19tracker.ca/", "COVID-19 Tracker Canada Project"), " and ", tags$a(href = "https://api.covid19tracker.ca/docs/1.0/overview", "their incredible API"), ".")
-            )
+            ),
+            
+            tags$head(tags$style(type="text/css", ".plot_box {  max-width: 800px; text-align: center;   display: block;
+  margin-left: auto;
+  margin-right: auto;}"))
             
         )
     )
