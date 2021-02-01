@@ -265,7 +265,19 @@ ui <- dashboardPage(
                         tags$li(textOutput("vacs_conclusion_text"))
                     )
                 )
-                )
+            ),
+            
+            box(width = 12,
+                title = "What's going on here?",
+                p("This dashboard calculates how long it will take to vaccinate all Canadians if things continue at their current rate. The conclusions may be humourous, but they're based on real data and the implications couldn't be more serious.")
+                ),
+            
+            box(width = 12,
+                title = "Credits",
+                p("Created by", tags$a(href = "http://cbelanger.netlify.app", "Christopher Belanger, PhD"), "."),
+                p(tags$a(href = "http://cbelanger.netlify.app", "Read the blog post here"), ", and ", tags$a(href = "https://github.com/chris31415926535/covid_vaccine_predictor", "see the code on GitHub here"), "."),
+                p("All data courtesy of the most-excellent ", tags$a(href = "https://covid19tracker.ca/", "COVID-19 Tracker Canada Project"), " and ", tags$a(href = "https://api.covid19tracker.ca/docs/1.0/overview", "their incredible API"), ".")
+            )
             
         )
     )
@@ -295,7 +307,7 @@ server <- function(input, output) {
     })
     
     output$vacs_conclusion_text <- renderText({
-        paste0("This will take until ", sf(filteredStats()$date_of_full_vaccination), ".")
+        paste0("If we start right now, this will take until ", sf(filteredStats()$date_of_full_vaccination), ".")
         })
     
     output$vaccine_plot <- renderPlotly({
