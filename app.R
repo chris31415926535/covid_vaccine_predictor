@@ -401,7 +401,8 @@ server <- function(input, output) {
         
         vac_plot %>%
             plotly::ggplotly(dynamicTicks = TRUE,
-                             tooltip = c("text"))
+                             tooltip = c("text")) %>%
+            plotly::layout(legend = list(orientation = "h", x = 0.33, y = -0.2))
         
     })
     
