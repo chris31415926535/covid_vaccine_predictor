@@ -16,6 +16,8 @@ library(httr)
 library(stringr)
 library(dplyr)
 library(readr)
+library(tidyr)
+library(tibble)
 
 update <- FALSE
 
@@ -32,6 +34,7 @@ if (file.exists("data/last_update.csv")){
 
 # update the data
 if (update) {
+    message("Updating data...")
     
     provinces <- httr::GET("https://api.covid19tracker.ca/provinces") %>%
         httr::content("text") %>%
@@ -242,6 +245,7 @@ ui <- dashboardPage(
             column(width = 12,
                    box(width = 12,
                        h1(textOutput("title_text")),
+                       h5("Some conditions apply. See below."),
                        align = "center")
             ),
             
@@ -250,7 +254,17 @@ ui <- dashboardPage(
             ),
             
             box(width = 12,
-                
+                title = "Assumptions",
+                tags$div(
+                    tags$ul(
+                        tags$li(textOutput("pop_text")),
+                        tags$li(textOutput("vac_needed_text")),
+                        tags$li(textOutput("vacs_given_text")),
+                        tags$li(textOutput("vacs_avg_text")),
+                        tags$li(textOutput("vacs_time_needed_text")),
+                        tags$li(textOutput("vacs_conclusion_text"))
+                    )
+                )
                 )
             
         )
@@ -259,8 +273,30 @@ ui <- dashboardPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    output$pop_text <- renderText({
+        paste0(filteredStats()$name," has a population of ", filteredStats()$population %>% format(big.mark = ","),".")
+    })
+    
+    output$vac_needed_text <- renderText({
+        paste0("Each person will need two shots, for a total of ",filteredStats()$vaccines_reqd %>% format(big.mark = ",")," vaccines.")
+    })
+    
+    output$vacs_given_text <- renderText({
+        paste0(filteredStats()$name, " has administered ",filteredStats()$vaccines_so_far %>% format(big.mark = ",")," vaccines since giving its first shot on ", filteredStats()$date_first_vaccine, ".")
+    })
+
+    output$vacs_avg_text <- renderText({
+        paste0("This works out to an average of ", filteredStats()$avg_vaccines_per_minute %>% round(digits = 1), " vaccines per minute.")
+    })
     
     
+    output$vacs_time_needed_text <- renderText({
+        paste0("To fully vaccinate ", filteredStats()$name, " at this rate it will take ", filteredStats()$mins_to_full_vaccination, " minutes, which is ", (filteredStats()$mins_to_full_vaccination / 60 / 24) %>% round(digits = 1), " days.")
+    })
+    
+    output$vacs_conclusion_text <- renderText({
+        paste0("This will take until ", sf(filteredStats()$date_of_full_vaccination), ".")
+        })
     
     output$vaccine_plot <- renderPlotly({
         
