@@ -129,7 +129,9 @@ supp_stats <- tibble(    code = all_stats %>%
             mins_to_full_vaccination = floor(vaccines_reqd / avg_vaccines_per_minute),
             
             date_of_full_vaccination = Sys.Date() + lubridate::minutes(mins_to_full_vaccination))
-           
+
+all_stats <- all_stats %>%
+    left_join(select(supp_stats, code, name), by = c("province"="code"))
 
 # define lubridate date-time-stamp
 sf <- stamp("Sunday, January 17, 1999, at 3:34PM")
@@ -250,6 +252,7 @@ ui <- dashboardPage(
             ),
             
             box(width = 12,
+                title = "Actual and Predicted Vaccinations",
                 plotlyOutput("vaccine_plot")
             ),
             
@@ -366,30 +369,39 @@ server <- function(input, output) {
         vac_plot <- filteredData() %>% #vaccinations %>%
             filter(total_vaccinations > 0) %>%
             ggplot(aes(x = date, y = total_vaccinations)) +
-            geom_line(aes(colour = "Vaccines Administered",
-                          linetype = "Vaccines Administered")) +
-            geom_point(aes(colour = "Vaccines Administered",
-                           linetype = "Vaccines Administered")) +
+            geom_line(aes(colour = "Administered",
+                          linetype = "Administered",
+                      #    text = paste0("Jurisdiction: ", name,
+                      #                  "\nDate: ", date,
+                      #                  "\nVaccines Administered: ", total_vaccinations)
+                      )) +
+            geom_point(aes(colour = "Administered",
+                           linetype = "Administered",
+                           text = paste0("Jurisdiction: ", name,
+                                         "\nDate: ", date,
+                                         "\nVaccines Administered: ", total_vaccinations))) +
             geom_hline(aes(yintercept = statistics$vaccines_reqd, 
-                           colour = "Total Vaccines Required",
-                           linetype = "Total Vaccines Required")) +
+                           colour = "Required",
+                           linetype = "Required")) +
             geom_line(data = predicted_line,
-                      aes(linetype = "Predicted Vaccinations",
-                          colour = "Predicted Vaccinations")) +
+                      aes(linetype = "Predicted",
+                          colour = "Predicted")) +
             scale_y_continuous(label = scales::comma_format()) +
             theme_minimal() +
             labs(x = "Date",
                  y = "Vaccines Administered",
-                 title = "Actual and Predicted Vaccinations") +
+                 title = NULL) + #"Actual and Predicted Vaccinations") +
             scale_linetype_manual("Vaccines Administered", values = c("dotted", "twodash", "solid")) +
             scale_colour_brewer(palette = "Dark2" ) +
             labs(linetype = NULL,
                  colour = NULL,
                  legend = NULL) +
-            theme(legend.title = element_blank())
+            theme(legend.title = element_blank()) +
+            scale_linetype(c("solid", "dashed", "dotted"))
         
         vac_plot %>%
-            plotly::ggplotly(dynamicTicks = TRUE)
+            plotly::ggplotly(dynamicTicks = TRUE,
+                             tooltip = c("text"))
         
     })
     
