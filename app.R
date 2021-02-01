@@ -167,6 +167,8 @@ ui <- dashboardPage(
     ),
     
     dashboardBody(
+        # google analytics tag, as per https://shiny.rstudio.com/articles/google-analytics.html
+        tags$head(includeHTML(("google_analytics.html"))),
         
         
         # Sidebar with a slider input for number of bins 
