@@ -83,6 +83,7 @@ if (update) {
 all_stats <- read_csv("data/all.csv") %>%
     mutate(date = lubridate::ymd(date))
 provinces <- read_csv("data/province_info.csv")
+last_update <- read_csv("data/last_update.csv") %>% pull(1)
 
 # base_url <- "https://api.covid19tracker.ca/reports?stat=vaccinations"
 # url <- base_url
@@ -97,38 +98,38 @@ provinces <- read_csv("data/province_info.csv")
 #supp_data 
 
 supp_stats <- tibble(    code = all_stats %>%
-               group_by(province) %>%
-               select(province) %>%
-               arrange(province) %>%
-               distinct() %>%
-               pull(province),
-           
-    date_first_vaccine = all_stats %>%
-               group_by(province) %>%
-               filter(total_vaccinations > 0) %>%
-               arrange(province, date) %>%
-               slice_head(n=1) %>%
-               pull(date),
-           
-           date_last_vaccine = all_stats %>%
-               group_by(province) %>%
-               arrange(province, date) %>%
-               slice_tail(n=1) %>%
-               pull(date),
-           
-           vaccines_so_far = all_stats %>%
-               group_by(province) %>%
-        arrange(province) %>%
-               select(total_vaccinations) %>%
-               summarise(total_vaccinations = max(total_vaccinations, na.rm = TRUE)) %>%
-                pull(total_vaccinations)
+                             group_by(province) %>%
+                             select(province) %>%
+                             arrange(province) %>%
+                             distinct() %>%
+                             pull(province),
+                         
+                         date_first_vaccine = all_stats %>%
+                             group_by(province) %>%
+                             filter(total_vaccinations > 0) %>%
+                             arrange(province, date) %>%
+                             slice_head(n=1) %>%
+                             pull(date),
+                         
+                         date_last_vaccine = all_stats %>%
+                             group_by(province) %>%
+                             arrange(province, date) %>%
+                             slice_tail(n=1) %>%
+                             pull(date),
+                         
+                         vaccines_so_far = all_stats %>%
+                             group_by(province) %>%
+                             arrange(province) %>%
+                             select(total_vaccinations) %>%
+                             summarise(total_vaccinations = max(total_vaccinations, na.rm = TRUE)) %>%
+                             pull(total_vaccinations)
 ) %>%
     left_join(provinces) %>%
     mutate (avg_vaccines_per_minute = vaccines_so_far / as.numeric(difftime(date_last_vaccine, date_first_vaccine, unit = "mins")),
             vaccines_reqd = population * 2,
             mins_to_full_vaccination = floor(vaccines_reqd / avg_vaccines_per_minute),
             
-            date_of_full_vaccination = Sys.Date() + lubridate::minutes(mins_to_full_vaccination))
+            date_of_full_vaccination = Sys.time() + lubridate::minutes(mins_to_full_vaccination))
 
 all_stats <- all_stats %>%
     left_join(select(supp_stats, code, name), by = c("province"="code"))
@@ -223,6 +224,24 @@ sf <- stamp("Sunday, January 17, 1999, at 3:34PM")
 prov_options <- c(provinces$code)
 names(prov_options) <- provinces$name
 
+tz_options <- c(
+    "Pacific  (GMT-8:00)" = "America/Vancouver",
+    "Mountain (GMT-7:00)" = "America/Edmonton",
+    "Central  (GMT-6:00)" = "America/Winnipeg",
+    "Eastern  (GMT-5:00)" = "America/Toronto",
+    "Atlantic (GMT-4:00)" = "America/Moncton",
+    "Nfld.    (GMT-3:30)" = "America/St_Johns"
+)
+
+tz_abbrs <- c(
+    "America/Vancouver" = "PST",
+    "America/Edmonton" = "MST",
+    "America/Winnipeg" = "CST",
+    "America/Toronto" = "EST",
+    "America/Moncton" = "AST",
+    "America/St_Johns" = "NST"
+)
+
 
 # Define UI for application that draws a histogram
 ui <- dashboardPage(
@@ -235,7 +254,12 @@ ui <- dashboardPage(
         shiny::selectInput("jurisdiction_select",
                            label = "Choose a Jurisdiction:",
                            choices = prov_options,
-                           selected = "ALL")
+                           selected = "ALL"),
+        
+        shiny::selectInput("tz_select",
+                           label = "Choose a Time Zone:",
+                           choices = tz_options,
+                           selected = "America/Toronto")
     ),
     
     dashboardBody(
@@ -247,7 +271,8 @@ ui <- dashboardPage(
             column(width = 12,
                    box(width = 12,
                        h1(textOutput("title_text")),
-                       h5("Some conditions apply. See below."),
+                       h5(textOutput("last_updated_text")),
+                       h5("Not an official prediction! Some conditions apply. See below."),
                        align = "center")
             ),
             
@@ -274,18 +299,22 @@ ui <- dashboardPage(
             box(width = 12,
                 title = "What's going on here?",
                 p("This dashboard calculates how long it will take to vaccinate all Canadians if things continue at their current rate. The conclusions may be humourous, but they're based on real data and the implications couldn't be more serious.")
-                ),
+            ),
             
             box(width = 12,
                 title = "Credits",
-                p("Created by", tags$a(href = "http://cbelanger.netlify.app", "Christopher Belanger, PhD"), "."),
-                p(tags$a(href = "http://cbelanger.netlify.app", "Read the blog post here"), ", and ", tags$a(href = "https://github.com/chris31415926535/covid_vaccine_predictor", "see the code on GitHub here"), "."),
-                p("All data courtesy of the most-excellent ", tags$a(href = "https://covid19tracker.ca/", "COVID-19 Tracker Canada Project"), " and ", tags$a(href = "https://api.covid19tracker.ca/docs/1.0/overview", "their incredible API"), ".")
+                p("Created by", tags$a(href = "http://cbelanger.netlify.app", "Christopher Belanger, PhD.")),
+                p(tags$a(href = "http://cbelanger.netlify.app", "Read the blog post here"), ", and ", 
+                  tags$a(href = "https://github.com/chris31415926535/covid_vaccine_predictor", "see the code on GitHub here.")),
+                p("All data courtesy of the most-excellent ", tags$a(href = "https://covid19tracker.ca/", "COVID-19 Tracker Canada Project"), " and ", tags$a(href = "https://api.covid19tracker.ca/docs/1.0/overview", "their incredible API."))
             ),
             
-            tags$head(tags$style(type="text/css", ".plot_box {  max-width: 800px; text-align: center;   display: block;
-  margin-left: auto;
-  margin-right: auto;}"))
+            # css to set max-width for the plot
+            tags$head(tags$style(type="text/css", ".plot_box {  max-width: 800px; 
+                                 text-align: center;   
+                                 display: block; 
+                                 margin-left: auto;  
+                                 margin-right: auto;}"))
             
         )
     )
@@ -293,6 +322,11 @@ ui <- dashboardPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    
+    output$last_updated_text <- renderText({
+        paste0("Data last updated at ", sf(last_update %>% with_tz(tzone = input$tz_select)), " ", tz_abbrs[[input$tz_select]], ".")
+    })
+    
     output$pop_text <- renderText({
         paste0(filteredStats()$name," has a population of ", filteredStats()$population %>% format(big.mark = ","),".")
     })
@@ -304,7 +338,7 @@ server <- function(input, output) {
     output$vacs_given_text <- renderText({
         paste0(filteredStats()$name, " has administered ",filteredStats()$vaccines_so_far %>% format(big.mark = ",")," vaccines since giving its first shot on ", filteredStats()$date_first_vaccine, ".")
     })
-
+    
     output$vacs_avg_text <- renderText({
         paste0("This works out to an average of ", filteredStats()$avg_vaccines_per_minute %>% round(digits = 1), " vaccines per minute.")
     })
@@ -315,8 +349,8 @@ server <- function(input, output) {
     })
     
     output$vacs_conclusion_text <- renderText({
-        paste0("If we start right now, this will take until ", sf(filteredStats()$date_of_full_vaccination), ".")
-        })
+        paste0("If we started when you loaded this page, this will take until ", sf(filteredStats()$date_of_full_vaccination %>% with_tz(tzone = input$tz_select)), " ", tz_abbrs[[input$tz_select]], ".")
+    })
     
     output$vaccine_plot <- renderPlotly({
         
@@ -376,10 +410,10 @@ server <- function(input, output) {
             ggplot(aes(x = date, y = total_vaccinations)) +
             geom_line(aes(colour = "Administered",
                           linetype = "Administered",
-                      #    text = paste0("Jurisdiction: ", name,
-                      #                  "\nDate: ", date,
-                      #                  "\nVaccines Administered: ", total_vaccinations)
-                      )) +
+                          #    text = paste0("Jurisdiction: ", name,
+                          #                  "\nDate: ", date,
+                          #                  "\nVaccines Administered: ", total_vaccinations)
+            )) +
             geom_point(aes(colour = "Administered",
                            linetype = "Administered",
                            text = paste0("Jurisdiction: ", name,
@@ -407,7 +441,7 @@ server <- function(input, output) {
         vac_plot %>%
             plotly::ggplotly(dynamicTicks = TRUE,
                              tooltip = c("text")) %>%
-            plotly::layout(legend = list(orientation = "h", x = 0.33, y = -0.2))
+            plotly::layout(legend = list(orientation = "h", x = 0.27, y = -0.2))
         
     })
     
@@ -424,19 +458,19 @@ server <- function(input, output) {
     })
     
     title_text <- reactive({
-        # jur_name <- provinces %>%
-        #     filter(code == input$jurisdiction_select) %>%
-        #     pull(name)
-        # 
-        date_string <- sf(filteredStats()$date_of_full_vaccination)
-        text <- paste0(filteredStats()$name," will be fully vaccinated against COVID-19 on ", date_string, "!")
-        message(text)
+        date_string <- filteredStats()$date_of_full_vaccination %>%
+            with_tz(tzone = input$tz_select) %>%
+            sf()
+           
+       # text <- paste0(filteredStats()$name," will be fully vaccinated against COVID-19 on ", date_string, " ", tz_abbrs[[input$tz_select]], "!")
+        #message(text)
+        paste0(filteredStats()$name," will be fully vaccinated against COVID-19 on ", sf(filteredStats()$date_of_full_vaccination %>% with_tz(tzone = input$tz_select)), " ", tz_abbrs[[input$tz_select]], ".")
         
     })
     
     output$title_text <- renderText({
         date_string <- sf(filteredStats()$date_of_full_vaccination)
-        paste0(filteredStats()$name," will be fully vaccinated against COVID-19 on ", date_string, "!")
+        paste0(filteredStats()$name," will be fully vaccinated against COVID-19 on ", sf(filteredStats()$date_of_full_vaccination %>% with_tz(tzone = input$tz_select)), " ", tz_abbrs[[input$tz_select]], "!")
     })
 }
 
