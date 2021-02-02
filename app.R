@@ -16,6 +16,10 @@ library(readr)
 library(tidyr)
 library(tibble)
 
+
+# debugging flag
+verbose <- FALSE
+
 update <- FALSE
 
 # if we have never updated before, we need to update now
@@ -31,7 +35,7 @@ if (file.exists("data/last_update.csv")){
 
 # update the data
 if (update) {
-    message("Updating data...")
+    if (verbose) message("Updating data...")
     
     provinces <- httr::GET("https://api.covid19tracker.ca/provinces") %>%
         httr::content("text") %>%
@@ -168,7 +172,19 @@ ui <- dashboardPage(
     
     dashboardBody(
         # google analytics tag, as per https://shiny.rstudio.com/articles/google-analytics.html
-        tags$head(includeHTML(("google_analytics.html"))),
+        #tags$head(includeHTML(("google_analytics.html"))),
+        tags$head(HTML(
+           '<!-- Global site tag (gtag.js) - Google Analytics -->
+                <script async src="https://www.googletagmanager.com/gtag/js?id=G-DNQWNHXBR7"></script>
+                <script>
+                window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag("js", new Date());
+            
+            gtag("config", "G-DNQWNHXBR7");
+            </script>'
+                
+        )),
         
         
         # Sidebar with a slider input for number of bins 
@@ -176,6 +192,7 @@ ui <- dashboardPage(
             
             column(width = 12,
                    box(width = 12,
+                       h3("Good news! At the rate we're going,"),
                        h1(textOutput("title_text")),
                        h5(textOutput("last_updated_text")),
                        h5("Not an official prediction! Some conditions apply. See below."),
@@ -183,7 +200,7 @@ ui <- dashboardPage(
             ),
             
             box(width = 12,
-                title = "Actual and Predicted Vaccinations",
+                title = "Actual and Predicted Vaccinations (Click and Drag to Zoom)",
                 tags$div(class = "plot_box",
                          plotlyOutput("vaccine_plot"))
             ),
@@ -246,7 +263,7 @@ server <- function(input, output) {
     })
     
     output$vacs_avg_text <- renderText({
-        paste0("This works out to an average of ", filteredStats()$avg_vaccines_per_minute %>% round(digits = 1), " vaccines per minute.")
+        paste0("This works out to an average of ", filteredStats()$avg_vaccines_per_minute %>% round(digits = 2), " vaccines per minute.")
     })
     
     
@@ -270,7 +287,7 @@ server <- function(input, output) {
                                   statistics$date_of_full_vaccination, statistics$vaccines_reqd) %>%
             mutate(date = as_date(date))
         
-        message(predicted_line)
+        if (verbose) message(predicted_line)
         
         vac_plot <- filteredData() %>% #vaccinations %>%
             filter(total_vaccinations > 0) %>%
@@ -281,7 +298,7 @@ server <- function(input, output) {
                            linetype = "Administered",
                            text = paste0("Jurisdiction: ", name,
                                          "\nDate: ", date,
-                                         "\nVaccines Administered: ", total_vaccinations))) +
+                                         "\nTotal Vaccines Administered: ", total_vaccinations))) +
             geom_hline(aes(yintercept = statistics$vaccines_reqd, 
                            colour = "Required",
                            linetype = "Required")) +
@@ -291,7 +308,7 @@ server <- function(input, output) {
             scale_y_continuous(label = scales::comma_format()) +
             theme_minimal() +
             labs(x = "Date",
-                 y = "Vaccines Administered",
+                 y = "Total Vaccines Administered",
                  title = NULL) + #"Actual and Predicted Vaccinations") +
             scale_linetype_manual("Vaccines Administered", values = c("dotted", "twodash", "solid")) +
             scale_colour_brewer(palette = "Dark2" ) +
