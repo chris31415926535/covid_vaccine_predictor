@@ -185,6 +185,10 @@ ui <- dashboardPage(
                 
         )),
         
+        tags$head(HTML(
+            '<meta property="og:image" content="https://cbelanger.netlify.app/img/headers/2021-02-04-linkedin-thumbnail.png">'
+        )),
+        
         
         # Sidebar with a slider input for number of bins 
         fluidRow(
@@ -225,7 +229,7 @@ ui <- dashboardPage(
             
             box(width = 12,
                 title = "Credits",
-                p("Created by", tags$a(href = "http://cbelanger.netlify.app", "Christopher Belanger, PhD.")),
+                p("Created by Christopher Belanger, Phd ", tags$a(href = "http://cbelanger.netlify.app", "(Sometimes I Blog!)"), tags$a(href = "https://www.linkedin.com/in/christopherabelanger/", "(I'm on LinkedIn!)")),
                 p(tags$a(href = "http://cbelanger.netlify.app/post/covid-countdown-building-a-shiny-dashboard-to-track-vaccinations-in-canada/", "Read the blog post here,"), " and ", 
                   tags$a(href = "https://github.com/chris31415926535/covid_vaccine_predictor", "see the code on GitHub here.")),
                 p("All data courtesy of the most-excellent ", tags$a(href = "https://covid19tracker.ca/", "COVID-19 Tracker Canada Project"), " and ", tags$a(href = "https://api.covid19tracker.ca/docs/1.0/overview", "their incredible API."))
