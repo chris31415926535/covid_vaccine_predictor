@@ -190,7 +190,7 @@ ui <- dashboardPage(
         )),
         
         tags$head(HTML(
-            '<meta property="og:description" content="Good news! At the rate we\'re going, Canada will be fully vaccinated against COVID-19 by...">'
+            '<meta property="og:description" content="Good news! At the rate we\'re going, Canada and the provinces & territories will be fully vaccinated against COVID-19 by...">'
         )),
         
         
