@@ -197,6 +197,10 @@ ui <- dashboardPage(
             '<meta name="author" content="Christopher Belanger">'
         )),
         
+        tags$head(HTML(
+            '<meta name="title" property="og:title" content="COVID Countdown Dashboard! How long until full Canada and the provinces/territories reach full COVID-19 vaccination?">'
+        )),
+        
         
         # Sidebar with a slider input for number of bins 
         fluidRow(
