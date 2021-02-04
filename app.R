@@ -198,7 +198,7 @@ ui <- dashboardPage(
         )),
         
         tags$head(HTML(
-            '<meta name="title" property="og:title" content="COVID Countdown Dashboard! How long until full Canada and the provinces/territories reach full COVID-19 vaccination?">'
+            '<meta name="title" property="og:title" content="COVID Countdown Dashboard! How long until Canada and the provinces/territories are fully vaccinated against COVID-19??">'
         )),
         
         
