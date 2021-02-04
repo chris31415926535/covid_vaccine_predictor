@@ -193,6 +193,10 @@ ui <- dashboardPage(
             '<meta property="og:description" content="This dashboard calculates how long it will take to vaccinate all Canadians if things continue at their current rate. The conclusions may be humourous, but they\'re based on real data and the implications couldn\'t be more serious.">'
         )),
         
+        tags$head(HTML(
+            '<meta name="author" content="Christopher Belanger">'
+        )),
+        
         
         # Sidebar with a slider input for number of bins 
         fluidRow(
