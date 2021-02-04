@@ -190,7 +190,7 @@ ui <- dashboardPage(
         )),
         
         tags$head(HTML(
-            '<meta property="og:description" content="Good news! At the rate we\'re going, Canada and the provinces & territories will be fully vaccinated against COVID-19 by...">'
+            '<meta property="og:description" content="This dashboard calculates how long it will take to vaccinate all Canadians if things continue at their current rate. The conclusions may be humourous, but they\'re based on real data and the implications couldn\'t be more serious.">'
         )),
         
         
