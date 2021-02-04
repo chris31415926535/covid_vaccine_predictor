@@ -189,6 +189,10 @@ ui <- dashboardPage(
             '<meta property="og:image" content="https://cbelanger.netlify.app/img/headers/2021-02-04-linkedin-thumbnail.png">'
         )),
         
+        tags$head(HTML(
+            '<meta property="og:description" content="Good news! At the rate we\'re going, Canada will be fully vaccinated against COVID-19 by...">'
+        )),
+        
         
         # Sidebar with a slider input for number of bins 
         fluidRow(
