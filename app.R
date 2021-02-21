@@ -66,7 +66,8 @@ if (update) {
             pivot_wider(names_from = name, values_from = value) %>% 
             unnest(cols = c(province, data)) %>%
             mutate(date = lubridate::ymd(date))
-    })
+    }) %>%
+        select(-last_updated)
     
     # save to file
     all_stats %>%
